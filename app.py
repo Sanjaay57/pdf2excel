@@ -7,7 +7,7 @@ from io import BytesIO
 st.set_page_config(page_title="PDF to Excel Converter", layout="centered")
 
 # === Title ===
-st.title("📄 AIIMS PDF to Excel Converter")
+st.title("📄PDF to Excel Converter")
 st.markdown("""
 Upload your AIIMS Paramedical result PDF (multi-page supported).
 The tables will be extracted and converted into an Excel file, named automatically based on your uploaded PDF.
