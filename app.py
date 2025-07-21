@@ -6,17 +6,17 @@ from io import BytesIO
 # === Page Configuration ===
 st.set_page_config(page_title="PDF to Excel Converter", layout="centered")
 
-# === App Title and Description ===
-st.title("📄PDF to Excel Converter")
+# === Title ===
+st.title("📄 AIIMS PDF to Excel Converter")
 st.markdown("""
-Upload your AIIMS Paramedical result PDF (even large multi-page files).
-This tool will extract all tables and convert them into an Excel sheet for easy download.
+Upload your AIIMS Paramedical result PDF (multi-page supported).
+The tables will be extracted and converted into an Excel file, named automatically based on your uploaded PDF.
 """)
 
-# === File Uploader ===
+# === File Upload ===
 uploaded_pdf = st.file_uploader("📎 Upload PDF File", type=["pdf"])
 
-# === Helper Function to Ensure Unique Headers ===
+# === Helper to Ensure Unique Headers ===
 def make_columns_unique(columns):
     seen = {}
     new_columns = []
@@ -31,20 +31,18 @@ def make_columns_unique(columns):
             new_columns.append(col)
     return new_columns
 
-# === Main Processing Logic ===
+# === Main Logic ===
 if uploaded_pdf:
-    with st.spinner("⏳ Extracting tables from PDF... Please wait."):
+    with st.spinner("⏳ Extracting tables from PDF..."):
         all_tables = []
         try:
             with pdfplumber.open(uploaded_pdf) as pdf:
-                total_pages = len(pdf.pages)
-                for i, page in enumerate(pdf.pages):
+                for page in pdf.pages:
                     tables = page.extract_tables()
                     for table in tables:
                         if table and len(table) > 1:
-                            headers = table[0]
-                            unique_headers = make_columns_unique(headers)
-                            df = pd.DataFrame(table[1:], columns=unique_headers)
+                            headers = make_columns_unique(table[0])
+                            df = pd.DataFrame(table[1:], columns=headers)
                             all_tables.append(df)
 
             if all_tables:
@@ -57,14 +55,19 @@ if uploaded_pdf:
                 output.seek(0)
                 processed_data = output.getvalue()
 
-                st.success("✅ Tables extracted and Excel file is ready!")
+                # Dynamically name Excel file after uploaded PDF
+                pdf_name = uploaded_pdf.name.rsplit(".", 1)[0]
+                excel_name = f"{pdf_name}.xlsx"
+
+                st.success(f"✅ Extraction complete! Click below to download **{excel_name}**")
                 st.download_button(
                     label="📥 Download Excel File",
                     data=processed_data,
-                    file_name="AIIMS_Paramedical_Result.xlsx",
+                    file_name=excel_name,
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
             else:
-                st.warning("⚠️ No tables found in the uploaded PDF.")
+                st.warning("⚠️ No tables were found in this PDF.")
+
         except Exception as e:
             st.error(f"❌ An error occurred: {e}")
