@@ -3,17 +3,20 @@ import pdfplumber
 import pandas as pd
 from io import BytesIO
 
-# === Page Config ===
+# === Page Configuration ===
 st.set_page_config(page_title="PDF to Excel Converter", layout="centered")
 
-# === Title and Description ===
-st.title("📄 AIIMS PDF to Excel Converter")
-st.markdown("Upload a multi-page PDF containing tables. This tool extracts all tables and converts them into an Excel file for download.")
+# === App Title and Description ===
+st.title("📄PDF to Excel Converter")
+st.markdown("""
+Upload your AIIMS Paramedical result PDF (even large multi-page files).
+This tool will extract all tables and convert them into an Excel sheet for easy download.
+""")
 
-# === File Upload ===
+# === File Uploader ===
 uploaded_pdf = st.file_uploader("📎 Upload PDF File", type=["pdf"])
 
-# === Function to Make Headers Unique ===
+# === Helper Function to Ensure Unique Headers ===
 def make_columns_unique(columns):
     seen = {}
     new_columns = []
@@ -28,7 +31,7 @@ def make_columns_unique(columns):
             new_columns.append(col)
     return new_columns
 
-# === Main Processing ===
+# === Main Processing Logic ===
 if uploaded_pdf:
     with st.spinner("⏳ Extracting tables from PDF... Please wait."):
         all_tables = []
@@ -51,10 +54,10 @@ if uploaded_pdf:
                 output = BytesIO()
                 with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                     final_df.to_excel(writer, index=False, sheet_name='Extracted Data')
-                    writer.save()
-                    processed_data = output.getvalue()
+                output.seek(0)
+                processed_data = output.getvalue()
 
-                st.success("✅ Tables extracted and Excel file ready!")
+                st.success("✅ Tables extracted and Excel file is ready!")
                 st.download_button(
                     label="📥 Download Excel File",
                     data=processed_data,
@@ -62,6 +65,6 @@ if uploaded_pdf:
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
             else:
-                st.warning("⚠️ No tables were found in the uploaded PDF.")
+                st.warning("⚠️ No tables found in the uploaded PDF.")
         except Exception as e:
             st.error(f"❌ An error occurred: {e}")
