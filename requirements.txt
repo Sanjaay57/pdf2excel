@@ -1,5 +1,6 @@
-pytesseract
+streamlit
 pdfplumber
+pytesseract
 pdf2image
 Pillow
 pandas
