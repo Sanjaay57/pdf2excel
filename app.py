@@ -5,17 +5,17 @@ import pytesseract
 from PIL import Image
 from pdf2image import convert_from_bytes
 from io import BytesIO
-import tempfile
 
-# === Page Configuration ===
+# Optional: set path to tesseract if needed (e.g., Windows)
+# pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+
 st.set_page_config(page_title="PDF to Excel Converter with OCR", layout="centered")
 st.title("📄 PDF to Excel Converter with OCR")
 st.markdown("""
 Upload your AIIMS Paramedical result PDF (multi-page supported).<br>
-It will extract tables, and if the page is scanned, OCR will be used automatically.
+Tables from text-based or scanned image PDFs will be extracted and converted into Excel.
 """, unsafe_allow_html=True)
 
-# === File Upload ===
 uploaded_pdf = st.file_uploader("📎 Upload PDF File", type=["pdf"])
 
 # === Helper to Ensure Unique Headers ===
@@ -55,9 +55,9 @@ def extract_ocr_table_from_image(img: Image.Image) -> pd.DataFrame:
 if uploaded_pdf:
     with st.spinner("⏳ Extracting tables (including OCR fallback)..."):
         all_tables = []
+        text_based_pages = set()
 
         try:
-            text_based_pages = set()
             with pdfplumber.open(uploaded_pdf) as pdf:
                 for i, page in enumerate(pdf.pages):
                     tables = page.extract_tables()
@@ -69,7 +69,6 @@ if uploaded_pdf:
                                 all_tables.append(df)
                         text_based_pages.add(i)
 
-            # Identify image-only pages and apply OCR
             pdf_bytes = uploaded_pdf.read()
             images = convert_from_bytes(pdf_bytes, dpi=300)
             for i, img in enumerate(images):
@@ -88,7 +87,6 @@ if uploaded_pdf:
                 output.seek(0)
                 processed_data = output.getvalue()
 
-                # Dynamically name Excel file after uploaded PDF
                 pdf_name = uploaded_pdf.name.rsplit(".", 1)[0]
                 excel_name = f"{pdf_name}.xlsx"
 
