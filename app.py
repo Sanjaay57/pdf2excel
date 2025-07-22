@@ -6,7 +6,7 @@ from PIL import Image
 from pdf2image import convert_from_bytes
 from io import BytesIO
 
-# Optional: set path to tesseract if needed (e.g., Windows)
+# Optional: for local testing on Windows, uncomment and adjust path
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 st.set_page_config(page_title="PDF to Excel Converter with OCR", layout="centered")
@@ -18,7 +18,7 @@ Tables from text-based or scanned image PDFs will be extracted and converted int
 
 uploaded_pdf = st.file_uploader("📎 Upload PDF File", type=["pdf"])
 
-# === Helper to Ensure Unique Headers ===
+# === Ensure Unique Headers ===
 def make_columns_unique(columns):
     seen = {}
     new_columns = []
@@ -33,9 +33,10 @@ def make_columns_unique(columns):
             new_columns.append(col)
     return new_columns
 
-# === OCR Table Extraction Helper ===
+# === OCR Table Extraction ===
 def extract_ocr_table_from_image(img: Image.Image) -> pd.DataFrame:
-    ocr_data = pytesseract.image_to_data(img, output_type=pytesseract.Output.DATAFRAME)
+    custom_config = r'--oem 3 --psm 6'
+    ocr_data = pytesseract.image_to_data(img, config=custom_config, output_type=pytesseract.Output.DATAFRAME)
     ocr_data = ocr_data.dropna(subset=['text'])
     if ocr_data.empty:
         return pd.DataFrame()
@@ -58,6 +59,8 @@ if uploaded_pdf:
         text_based_pages = set()
 
         try:
+            # Step 1: Extract using pdfplumber
+            uploaded_pdf.seek(0)
             with pdfplumber.open(uploaded_pdf) as pdf:
                 for i, page in enumerate(pdf.pages):
                     tables = page.extract_tables()
@@ -69,8 +72,11 @@ if uploaded_pdf:
                                 all_tables.append(df)
                         text_based_pages.add(i)
 
+            # Step 2: Extract using OCR
+            uploaded_pdf.seek(0)
             pdf_bytes = uploaded_pdf.read()
             images = convert_from_bytes(pdf_bytes, dpi=300)
+
             for i, img in enumerate(images):
                 if i not in text_based_pages:
                     df = extract_ocr_table_from_image(img)
@@ -80,12 +86,15 @@ if uploaded_pdf:
             if all_tables:
                 final_df = pd.concat(all_tables, ignore_index=True)
 
-                # Save to Excel in memory
+                # Optional preview
+                st.subheader("🧾 Preview Extracted Data")
+                st.dataframe(final_df.head(100))
+
+                # Save to Excel
                 output = BytesIO()
                 with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                     final_df.to_excel(writer, index=False, sheet_name='Extracted Data')
                 output.seek(0)
-                processed_data = output.getvalue()
 
                 pdf_name = uploaded_pdf.name.rsplit(".", 1)[0]
                 excel_name = f"{pdf_name}.xlsx"
@@ -93,7 +102,7 @@ if uploaded_pdf:
                 st.success(f"✅ Extraction complete! Click below to download **{excel_name}**")
                 st.download_button(
                     label="📥 Download Excel File",
-                    data=processed_data,
+                    data=output,
                     file_name=excel_name,
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
